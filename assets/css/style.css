@@ -644,7 +644,15 @@ kbd {
 .slider:focus-visible::-webkit-slider-thumb { opacity: 1; transform: scale(1); }
 [data-track="vocals"] .slider { --fill: var(--vocal); }
 [data-track="backing"] .slider { --fill: var(--backing); }
-[data-track="master"] .slider { --fill: linear-gradient(90deg, var(--accent-1), var(--accent-2)); }
+/* A gradient cannot be used as a colour stop inside another gradient, so the
+   master track gets its own single valid gradient instead of a --fill token. */
+[data-track="master"] .slider { --fill: var(--accent-2); }
+[data-track="master"] .slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg,
+    var(--accent-1) 0%,
+    var(--accent-2) var(--pct, 100%),
+    var(--range-track) var(--pct, 100%));
+}
 
 /* --- lyrics --------------------------------------------------------------- */
 .offset { display: flex; align-items: center; gap: 3px; }
@@ -670,48 +678,63 @@ kbd {
 
 .lyrics__line {
   position: relative;
-  padding: 9px 14px;
-  border-radius: var(--r-sm);
+  padding: 9px 0 9px 16px;
   font-family: var(--font-display);
   font-size: 16px;
-  font-weight: 500;
+  /* These are <button> elements, and the global reset only inherits font and
+     colour. Without this the browser paints its native grey chrome with a
+     border, which reads as a box behind every line. */
+  -webkit-appearance: none; appearance: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  width: 100%;
+  /* Weight, size and letter-spacing stay identical in every state. Changing
+     any of them re-wraps long lines to a different number of rows, which
+     shoves every following line down and makes the whole pane jump. */
+  font-weight: 600;
   line-height: 1.45;
+  letter-spacing: 0;
   /* Opaque mixes only — alpha here would wash the text into the background. */
   color: var(--text-2);
   cursor: pointer;
-  transition: color .35s var(--ease), transform .45s var(--ease-out),
-              font-size .45s var(--ease-out), background var(--dur) var(--ease),
-              text-shadow .35s var(--ease);
+  transform-origin: left center;
+  transition: color .35s var(--ease), opacity .35s var(--ease);
 }
-.lyrics__line:hover { background: var(--surface-2); color: var(--text); }
 
 /* Already sung: recede, but stay comfortably readable. */
 .lyrics__line.is-done {
   color: color-mix(in oklab, var(--text-2) 58%, var(--text-3));
-  font-weight: 400;
 }
 
 .lyrics__line.is-active {
   color: var(--lyric-active-text);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -.015em;
-  transform: translateX(5px);
-  background: linear-gradient(90deg,
-    var(--lyric-active-bg),
-    color-mix(in oklab, var(--accent-3) 8%, transparent) 54%,
-    transparent 90%);
-  text-shadow: 0 0 34px color-mix(in oklab, var(--accent-1) 50%, transparent);
+  /* Emphasis comes from colour, glow and a layout-neutral scale, never from
+     font metrics, so activating a long line cannot shift the lines below it. */
+  animation: lyric-enter .5s var(--ease-out) both,
+             lyric-glow 2.6s var(--ease) .5s infinite;
 }
 .lyrics__line.is-active::before {
   content: "";
-  position: absolute; left: -2px; top: 16%; bottom: 16%;
-  width: 4px; border-radius: 99px;
+  position: absolute; left: 0; top: 16%; bottom: 16%;
+  width: 3px; border-radius: 99px;
   background: linear-gradient(180deg, var(--accent-1), var(--accent-3));
   box-shadow: 0 0 14px color-mix(in oklab, var(--accent-1) 80%, transparent);
 }
 .lyrics__line.is-blank { min-height: 12px; padding: 0; cursor: default; }
-.lyrics__line.is-blank:hover { background: none; color: transparent; }
+
+.lyrics__line:not(.is-blank):hover { color: var(--text); }
+
+@keyframes lyric-enter {
+  0%   { opacity: .2; transform: translateX(-18px) scale(.99); filter: blur(2px); }
+  60%  { opacity: 1; transform: translateX(2px)   scale(1.015); }
+  100% { opacity: 1; transform: translateX(0)     scale(1.02);  filter: blur(0); }
+}
+@keyframes lyric-glow {
+  0%, 100% { text-shadow: 0 0 20px color-mix(in oklab, var(--accent-1) 38%, transparent); }
+  50%      { text-shadow: 0 0 38px color-mix(in oklab, var(--accent-1) 68%, transparent); }
+}
 
 .lyrics__hint { text-align: center; font-size: 13px; padding: 20px 0; }
 
@@ -751,7 +774,9 @@ kbd {
 .app.lyrics-focus .pane--player { display: none; }
 .app.lyrics-focus .stage { grid-template-columns: minmax(0, 1fr); }
 .app.lyrics-focus .pane--lyrics { border-color: var(--line-2); }
-.app.lyrics-focus .lyrics__line.is-active { font-size: clamp(26px, 4.4vw, 46px); }
+/* Bigger text in focus mode, but applied to every line equally — scaling only
+   the active line would re-wrap it and make the pane jump again. */
+.app.lyrics-focus .lyrics__line { font-size: clamp(24px, 4vw, 42px); padding: 12px 0 12px 20px; }
 
 /* --- toast ---------------------------------------------------------------- */
 .toast-host {
