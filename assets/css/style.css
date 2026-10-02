@@ -775,8 +775,28 @@ kbd {
 .app.lyrics-focus .stage { grid-template-columns: minmax(0, 1fr); }
 .app.lyrics-focus .pane--lyrics { border-color: var(--line-2); }
 /* Bigger text in focus mode, but applied to every line equally — scaling only
-   the active line would re-wrap it and make the pane jump again. */
-.app.lyrics-focus .lyrics__line { font-size: clamp(24px, 4vw, 42px); padding: 12px 0 12px 20px; }
+   the active line would re-wrap it and make the pane jump again. Centred here
+   so fullscreen reads like a title card rather than a left-aligned column. */
+.app.lyrics-focus .lyrics__line {
+  font-size: clamp(24px, 4vw, 42px);
+  /* Symmetric gutters keep the text truly centred while leaving room for the
+     active indicator in the left one. */
+  padding: 14px 22px;
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  text-align: center;
+  /* The active line scales by 1.02. Growing from the left edge would drag
+     centred text 1% of its width off-axis, so grow from the centre instead. */
+  transform-origin: center;
+}
+/* Fullscreen reads like a title card rather than a left-aligned column, but
+   the active-line indicator stays — it is the clearest "this one is live"
+   signal, and the glow alone is easy to miss against a long line. */
+.app.lyrics-focus .lyrics__line.is-active::before {
+  left: 0;
+  top: 22%; bottom: 22%;
+  width: 4px;
+}
 
 /* --- toast ---------------------------------------------------------------- */
 .toast-host {
