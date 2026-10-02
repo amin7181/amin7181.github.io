@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Resonance &mdash; Music Player</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237c5cff'/%3E%3Cg fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M9 17V6l9-2v11'/%3E%3Ccircle cx='6.5' cy='17' r='2.4'/%3E%3Ccircle cx='15.5' cy='15' r='2.4'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="notice" id="file-notice" hidden>
+  <strong>Opened as a local file.</strong>
+  Browsers block audio loading from <code>file://</code>. Start the server instead:
+  <button class="notice__cmd" id="btn-start-server" type="button"><code>python tools/serve.py</code></button>
+  then open <code>http://127.0.0.1:8000/</code>
+</div>
+
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M9 18V5l10-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle>
+        </svg>
+      </span>
+      <span class="brand__text">
+        <strong>Resonance</strong>
+        <small>karaoke studio</small>
+      </span>
+    </div>
+
+    <div class="topbar__search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path>
+      </svg>
+      <input type="search" id="search" placeholder="Search title, artist or album&hellip;" autocomplete="off" spellcheck="false" aria-label="Search library">
+      <kbd>/</kbd>
+    </div>
+
+    <div class="topbar__actions">
+      <button class="icon-btn" id="btn-shuffle" title="Shuffle" aria-pressed="false" aria-label="Shuffle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 3h5v5"></path><path d="M4 20 21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-repeat" title="Repeat" aria-label="Repeat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 2l4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path>
+        </svg>
+        <span class="icon-btn__badge" id="repeat-badge" hidden>1</span>
+      </button>
+      <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme">
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
+        </svg>
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"></path>
+        </svg>
+      </button>
+      <button class="icon-btn" id="btn-help" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="9"></circle><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.4-2.8 4"></path><path d="M12 17.5h.01"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <aside class="pane pane--library" id="library-pane">
+      <div class="pane__head">
+        <h2>Library</h2>
+        <span class="chip" id="library-count">0</span>
+      </div>
+      <div class="pane__body">
+        <ul class="songlist" id="songlist" role="listbox" aria-label="Songs"></ul>
+        <div class="empty" id="library-empty" hidden>
+          <p>No songs yet.</p>
+          <p class="muted">Drop files into <code>songs/</code> then list them in <code>data/library.js</code>.</p>
+        </div>
+      </div>
+    </aside>
+
+    <section class="pane pane--player">
+
+      <div class="stage-bg" id="stage-bg" aria-hidden="true"></div>
+
+      <div class="player">
+
+        <div class="art" id="art">
+          <div class="art__glow" aria-hidden="true"></div>
+          <div class="art__disc" id="art-disc" aria-hidden="true"></div>
+          <img class="art__img" id="art-img" alt="" decoding="async">
+          <div class="art__fallback" id="art-fallback" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l10-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div class="art__veil" id="art-veil" hidden>
+            <div class="spinner" aria-hidden="true"></div>
+            <span id="art-veil-text">Loading&hellip;</span>
+          </div>
+        </div>
+
+        <div class="now">
+          <h1 class="now__title" id="now-title">Nothing playing</h1>
+          <p class="now__sub" id="now-sub">Pick a song from your library</p>
+        </div>
+
+        <div class="progress">
+          <span class="time" id="time-now">0:00</span>
+          <div class="progress__track" id="progress-track" role="slider" tabindex="0"
+               aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress__buffer" id="progress-buffer"></div>
+            <div class="progress__fill" id="progress-fill"></div>
+            <div class="progress__knob" id="progress-knob"></div>
+          </div>
+          <span class="time" id="time-total">0:00</span>
+        </div>
+
+        <div class="transport">
+          <button class="icon-btn icon-btn--sm" id="btn-prev" title="Previous (P)" aria-label="Previous song">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h2.5v14H7zM20 5.5v13L9.5 12z"></path></svg>
+          </button>
+          <button class="play-btn" id="btn-play" title="Play (Space)" aria-label="Play">
+            <svg class="play-btn__icon play-btn__icon--play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15L20 12z"></path></svg>
+            <svg class="play-btn__icon play-btn__icon--pause" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5h3.6v15H7zM13.4 4.5H17v15h-3.6z"></path></svg>
+            <span class="play-btn__ring" aria-hidden="true"></span>
+          </button>
+          <button class="icon-btn icon-btn--sm" id="btn-next" title="Next (N)" aria-label="Next song">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 5H17v14h-2.5zM4 5.5v13L14.5 12z"></path></svg>
+          </button>
+        </div>
+
+        <div class="mixer">
+          <div class="mixer__head">
+            <h3>Mix</h3>
+            <button class="link-btn" id="btn-mix-reset">Reset</button>
+          </div>
+
+          <div class="strip" data-track="vocals">
+            <button class="strip__toggle" data-mute="vocals" aria-pressed="false" title="Mute vocals (V)">
+              <span class="strip__dot"></span><span class="strip__name">Vocals</span>
+              <span class="strip__state" data-state-for="vocals">100</span>
+            </button>
+            <input class="slider" type="range" id="vol-vocals" min="0" max="100" value="100" aria-label="Vocal volume">
+          </div>
+
+          <div class="strip" data-track="backing">
+            <button class="strip__toggle" data-mute="backing" aria-pressed="false" title="Mute backing (B)">
+              <span class="strip__dot"></span><span class="strip__name">Backing</span>
+              <span class="strip__state" data-state-for="backing">100</span>
+            </button>
+            <input class="slider" type="range" id="vol-backing" min="0" max="100" value="80" aria-label="Backing volume">
+          </div>
+
+          <div class="strip strip--master" data-track="master">
+            <button class="strip__toggle" data-mute="master" aria-pressed="false" title="Mute master (M)">
+              <span class="strip__dot"></span><span class="strip__name">Master</span>
+              <span class="strip__state" data-state-for="master">90</span>
+            </button>
+            <input class="slider" type="range" id="vol-master" min="0" max="100" value="90" aria-label="Master volume">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="pane pane--lyrics" id="lyrics-pane">
+      <div class="pane__head">
+        <h2>Lyrics</h2>
+        <div class="pane__tools">
+          <div class="offset" title="Shift lyric timing">
+            <button class="icon-btn icon-btn--xs" id="off-minus" aria-label="Lyrics 50ms earlier">&minus;</button>
+            <span class="offset__val" id="off-val">0 ms</span>
+            <button class="icon-btn icon-btn--xs" id="off-plus" aria-label="Lyrics 50ms later">+</button>
+            <button class="icon-btn icon-btn--xs" id="off-reset" aria-label="Reset lyric offset" title="Reset">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.6-5.9"></path><path d="M4 4v4h4"></path></svg>
+            </button>
+          </div>
+          <button class="icon-btn icon-btn--xs" id="btn-expand" title="Fullscreen lyrics (F)" aria-label="Fullscreen lyrics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 9V4h5"></path><path d="M20 9V4h-5"></path><path d="M4 15v5h5"></path><path d="M20 15v5h-5"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="pane__body lyrics" id="lyrics-scroll" tabindex="0">
+        <div class="lyrics__inner" id="lyrics-inner">
+          <p class="lyrics__hint muted" id="lyrics-hint">Select a song to see its lyrics.</p>
+        </div>
+      </div>
+      <div class="lyrics__foot">
+        <label class="switch">
+          <input type="checkbox" id="auto-scroll" checked>
+          <span class="switch__track"><span class="switch__thumb"></span></span>
+          <span class="switch__label">Auto-scroll</span>
+        </label>
+        <span class="muted" id="lyrics-source"></span>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+<div class="overlay" id="help-overlay" hidden>
+  <div class="overlay__card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <div class="overlay__head">
+      <h2 id="help-title">Keyboard shortcuts</h2>
+      <button class="icon-btn icon-btn--sm" id="btn-help-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+    <dl class="keys">
+      <div><dt><kbd>Space</kbd></dt><dd>Play / pause</dd></div>
+      <div><dt><kbd>&larr;</kbd><kbd>&rarr;</kbd></dt><dd>Seek &minus;5s / +5s</dd></div>
+      <div><dt><kbd>J</kbd><kbd>L</kbd></dt><dd>Seek &minus;10s / +10s</dd></div>
+      <div><dt><kbd>&uarr;</kbd><kbd>&darr;</kbd></dt><dd>Master volume</dd></div>
+      <div><dt><kbd>V</kbd></dt><dd>Mute / unmute vocals</dd></div>
+      <div><dt><kbd>B</kbd></dt><dd>Mute / unmute backing</dd></div>
+      <div><dt><kbd>M</kbd></dt><dd>Mute / unmute master</dd></div>
+      <div><dt><kbd>N</kbd><kbd>P</kbd></dt><dd>Next / previous song</dd></div>
+      <div><dt><kbd>[</kbd><kbd>]</kbd></dt><dd>Lyrics &minus;50ms / +50ms</dd></div>
+      <div><dt><kbd>0</kbd>&hellip;<kbd>9</kbd></dt><dd>Jump to 0&ndash;90% of song</dd></div>
+      <div><dt><kbd>F</kbd></dt><dd>Fullscreen lyrics</dd></div>
+      <div><dt><kbd>/</kbd></dt><dd>Focus search</dd></div>
+      <div><dt><kbd>?</kbd></dt><dd>Toggle this dialog</dd></div>
+    </dl>
+    <p class="muted small">Tip: if lyrics feel early or late, nudge the offset in the Lyrics header until the highlight lines up.</p>
+  </div>
+</div>
+
+<script src="data/library.js"></script>
+<script src="assets/js/lrc.js"></script>
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
